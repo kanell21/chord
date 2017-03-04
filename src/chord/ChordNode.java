@@ -14,15 +14,14 @@ import java.util.logging.Logger;
 
 public class ChordNode extends Thread {
 	
-	
-	private Hashtable<String, String> myTable = new Hashtable<String, String>();
-	private ServerSocket Server;
+	public Hashtable<Integer, String> myTable = new Hashtable<Integer, String>();
+	public ServerSocket Server;
     public int id;
     public int number;
-    private int predecessor;
-    private int successor;
-    private static int PORT = 49152;
-    private String IPV4 = "127.0.0.1";
+    public int predecessor;
+    public int successor;
+    public int PORT = 49152;
+    public String IPV4 = "127.0.0.1";
     
     private class PredSucc {
     	int predecessor;
@@ -53,26 +52,23 @@ public class ChordNode extends Thread {
             this.predecessor = predsucc.predecessor;
             this.successor = predsucc.successor;
             
-            if (this.predecessor != this.id)
-            	// send my id
-            if (this.successor != this.id)
-            	// send my id
-            
-            System.out.println(this.id + "\t: my predecessor is " + this.predecessor + ", my successor is " + this.successor);
-            Message message;
-            for(;;){
-
-            	message = ReceiveMessage();
-    	        if(message.getType() == 0) { // find predecessor - successor
-    	        	
-    	        }
-    	        else if(message.getType() == 1) { // i am your successor 
-    	        	
-    	        }  
-    	        else if(message.getType() == 2) { //  i am your predecessor
-    	        	
-    	        }
+            if (this.predecessor != this.id) {
+            	Message succInform = new Message(this.predecessor, this.id, -1, Integer.toString(this.id), -1, Type.NEW_SUCC_INFORM);
+            	SendMessage(succInform);
+            }
             	
+            if (this.successor != this.id) {
+            	Message predInform = new Message(this.successor, this.id, -1, Integer.toString(this.id), -1, Type.NEW_PRED_INFORM);
+            	SendMessage(predInform);
+            }
+            
+            Message message;
+            
+            for(;;){
+            	
+            	message = ReceiveMessage();
+            	MessageHandler messageHandler = new MessageHandler(message, this);
+    	        messageHandler.start();
             }
             
         } catch (IOException | ClassNotFoundException ex) {
@@ -80,7 +76,22 @@ public class ChordNode extends Thread {
         }
     }
     
-    private void SendMessage(Message message) {
+    public Message ReceiveMessage() throws ClassNotFoundException {
+    	
+    	Message message = null;
+    	try {
+    		
+	    	Socket incoming = Server.accept();
+	    	ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(incoming.getInputStream()));
+	    	message = (Message) ois.readObject();
+	        
+    	} catch (IOException e) {
+			e.printStackTrace();
+		}  
+    	return message;
+    }
+    
+	public void SendMessage(Message message) {
     	
     	Socket echoSocket;
 		try {
@@ -93,46 +104,35 @@ public class ChordNode extends Thread {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-    }
+    } 
+
     
-    private Message ReceiveMessage() throws ClassNotFoundException {
-    	
-    	Message message = null;
-    	try {
-    		
-	    	Socket incoming = Server.accept();
-	    	ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(incoming.getInputStream()));
-	    	message = (Message) ois.readObject();
-	        System.out.println(this.id + "\t: Message received: " + message.getBody());
-	        
-    	} catch (IOException e) {
-			e.printStackTrace();
-		}  
-    	return message;
-    }
-    
-    private PredSucc FindPredSucc() {
+    public PredSucc FindPredSucc() {
     	
     	PredSucc predsucc = new PredSucc();
     	predsucc.predecessor = 0;
     	predsucc.successor = 0;
-    	Message message = new Message();
-    	message.setTo(0);
-    	message.setType(0); // 0 = find predecessor - successor
+    	Message message = new Message(0, this.id, this.id, null, -1, Type.PRED_SUCC_REQUEST);
+    	SendMessage(message);
     	while(true) {
-    		SendMessage(message);
+
     		try {
 				message = ReceiveMessage();
+		        System.out.println(this.id + "\t: Message received from port-node " + message.getFrom() + " : " + message.getBody()); 
+				predsucc.successor = Integer.parseInt(message.getBody());		
+	    		if(predsucc.successor > this.id || predsucc.successor == 0)
+	    			break;
+	    		else {
+	    			predsucc.predecessor = predsucc.successor;
+	    			MessageHandler messageHandler = new MessageHandler(message, this);
+					messageHandler.start();
+	    		}
+	    		
 			} catch (ClassNotFoundException e) {
 				e.printStackTrace();
-			}
-    		predsucc.successor = Integer.parseInt(message.getBody());
-    		if(predsucc.successor > this.id || predsucc.successor == 0)
-    			break;
-    		else
-    			predsucc.predecessor = predsucc.successor;
+			}	
     	}
     	return predsucc;
     }
-
+    
 }
