@@ -1,15 +1,22 @@
 package chord;
 
-public class Message {
+import java.io.Serializable;
+
+public class Message implements Serializable{
+
+
+	private static final long serialVersionUID = 1L;
 	private int to;
+	private int from;
 	private int replyTo;
 	private String body;
 	private int hashId;
-	private int type;
+	private Type type;
 	
 	public Message() {}
-	public Message(int to, int replyTo, String body, int hashId, int type) {
+	public Message(int to, int from, int replyTo, String body, int hashId, Type type) {
 		this.to = to;
+		this.from = from;
 		this.replyTo = replyTo;
 		this.body = body;
 		this.hashId = hashId;
@@ -18,6 +25,9 @@ public class Message {
 	
 	public void setTo(int to) {
 		this.to = to;
+	}
+	public void setFrom(int from) {
+		this.from = from;
 	}
 	public void setReplyTo(int replyTo) {
 		this.replyTo = replyTo;
@@ -28,11 +38,14 @@ public class Message {
 	public void setHashId(int hashId) {
 		this.hashId = hashId;
 	}
-	public void setType(int type) {
+	public void setType(Type type) {
 		this.type = type;
 	}
 	public int getTo() {
 		return this.to;
+	}
+	public int getFrom() {
+		return this.from;
 	}
 	public int getReplyTo() {
 		return this.replyTo;
@@ -43,7 +56,7 @@ public class Message {
 	public int getHashId() {
 		return this.hashId;
 	}
-	public int getType() {
+	public Type getType() {
 		return this.type;
 	}
 	
