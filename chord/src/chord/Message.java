@@ -14,12 +14,14 @@ public class Message implements Serializable {
 	private int hashKey;
 	private Hashtable<Integer,String> hashtable;
 	private Vector<ReplicaElements> chain;
-	private Type type;
 	private int ttl;
+	private Type type;
+	private boolean timer;
 
 	public Message() {}
+
 	
-	public Message(int to, int from, int replyTo, String body, int hashKey, Hashtable<Integer,String> hashtable, Type type) {
+	public Message(int to, int from, int replyTo, String body, int hashKey, Hashtable<Integer,String> hashtable, Type type, boolean timer) {
 
 		this.to = to;
 		this.from = from;
@@ -28,9 +30,10 @@ public class Message implements Serializable {
 		this.hashKey = hashKey;
 		this.hashtable = hashtable;
 		this.type = type;
+		this.timer = timer;
 	}
 	
-	public Message(int to, int from, int replyTo, String body, int hashKey, Hashtable<Integer,String> hashtable, Vector<ReplicaElements> chain, Type type) {
+	public Message(int to, int from, int replyTo, String body, int hashKey, Hashtable<Integer,String> hashtable, Vector<ReplicaElements> chain, Type type, boolean timer) {
 
 		this.to = to;
 		this.from = from;
@@ -40,9 +43,10 @@ public class Message implements Serializable {
 		this.hashtable = hashtable;
 		this.chain = chain;
 		this.type = type;
+		this.timer = timer;
 	}
 	
-	public Message(int to, int from, int replyTo, String body, int hashKey, Hashtable<Integer,String> hashtable, Vector<ReplicaElements> chain, int ttl, Type type) {
+	public Message(int to, int from, int replyTo, String body, int hashKey, Hashtable<Integer,String> hashtable, Vector<ReplicaElements> chain, int ttl, Type type, boolean timer) {
 
 		this.to = to;
 		this.from = from;
@@ -53,6 +57,7 @@ public class Message implements Serializable {
 		this.chain = chain;
 		this.ttl = ttl;
 		this.type = type;
+		this.timer = timer;
 	}
 
 	public void setTo(int to) {
@@ -82,6 +87,9 @@ public class Message implements Serializable {
 	public void setTTL(int ttl) {
 		this.ttl = ttl;
 	}
+	public void setTimer(boolean timer) {
+		this.timer = timer;
+	}
 	public int getTo() {
 		return this.to;
 	}
@@ -109,5 +117,7 @@ public class Message implements Serializable {
 	public int getTTL() {
 		return this.ttl;
 	}
-
+	public boolean getTimer() {
+		return this.timer;
+	}
 }

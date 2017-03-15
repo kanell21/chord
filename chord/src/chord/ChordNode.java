@@ -17,16 +17,18 @@ public class ChordNode extends Thread {
     public int predecessor;
     public int successor;
     public int PORT = 49152;
-    public String IPV4 = "127.0.0.1";
+    public static String IPV4 = "127.0.0.1";
+    public String MODE;
     public boolean alive = true;
     public Vector<ReplicaElements> predChain;
     public int K;
     public Vector<Long> queue;
     
-    public ChordNode(int id, int number, int K) {
+    public ChordNode(int id, int number, int K, String mode) {
         this.id = id;
         this.number = number;
         this.K = K;
+        this.MODE = mode;
     }
     
   
@@ -40,11 +42,11 @@ public class ChordNode extends Thread {
             	message = ReceiveMessage();
             	
             	if (!this.alive) {
-            		message = new Message(this.successor, this.id, this.id, null, -1, this.hashtable, this.predChain, this.K, Type.DEPART_PRED_CHAIN);
+            		message = new Message(this.successor, this.id, this.id, null, -1, this.hashtable, this.predChain, this.K, Type.DEPART_PRED_CHAIN, false);
                 	Messaging.SendMessage(message);
                 	Server = new ServerSocket(PORT + this.id);
                 	message = ReceiveMessage();
-            		Messaging.SendMessage(new Message(this.predecessor, this.id, -1, Integer.toString(this.successor), -1, null, Type.NEW_SUCC_INFORM));
+            		Messaging.SendMessage(new Message(this.predecessor, this.id, -1, Integer.toString(this.successor), -1, null, Type.NEW_SUCC_INFORM, false));
         	        Server.close();
             		return;
             	}
@@ -78,20 +80,20 @@ public class ChordNode extends Thread {
     	
     	int predecessor = 0;
     	int successor = 0;
-    	Message inMessage = new Message(0, this.id, this.id, null, -1, null, Type.PRED_SUCC_REQUEST);
+    	Message inMessage = new Message(0, this.id, this.id, null, -1, null, Type.PRED_SUCC_REQUEST, false);
     	Message outMessage;
     	Messaging.SendMessage(inMessage);
     	while (true) {
     		try {
 				inMessage = ReceiveMessage();
-		        System.out.println(this.id + "\t: Message received frsuccChainom port-node " + inMessage.getFrom() + " : " + inMessage.getBody()); 
+//		        System.out.println(this.id + "\t: Message received from port-node " + inMessage.getFrom() + " : " + inMessage.getBody()); 
 				successor = Integer.parseInt(inMessage.getBody());		
 	    		if (successor > this.id || successor == 0) {
 	    			break;
 	    		}
 	    		else {
 	    			predecessor = successor;
-	    			outMessage = new Message(Integer.parseInt(inMessage.getBody()), this.id, this.id, null, -1, null, Type.PRED_SUCC_REQUEST);
+	    			outMessage = new Message(Integer.parseInt(inMessage.getBody()), this.id, this.id, null, -1, null, Type.PRED_SUCC_REQUEST, false);
 	    			Messaging.SendMessage(outMessage);
 	    		}
 	    		
@@ -104,6 +106,23 @@ public class ChordNode extends Thread {
     	return;
     }
     
+    public void FindMyHashtable() throws InterruptedException {
+    	
+    	Message msg = new Message(this.successor, this.id, this.id, null, -1, null, Type.REQUEST_HASH_TABLE, false);
+    	Messaging.SendMessage(msg);
+    	try {
+			msg = ReceiveMessage();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+    	MessageHandler msgHandler = new MessageHandler(msg, this);
+    	msgHandler.start();
+    	msgHandler.join();
+    	
+    	return;
+    }
+   
+
     public void Initialization() throws IOException, InterruptedException {
     	
     	queue = new Vector<Long>();
@@ -122,30 +141,13 @@ public class ChordNode extends Thread {
 
         FindMyHashtable();
         
-        Message predChainMsg = new Message(this.predecessor, this.id, this.id, null, -1, new Hashtable<Integer,String>(), new Vector<ReplicaElements>(), this.K - 1, Type.PRED_CHAIN_REQUEST);
+        Message predChainMsg = new Message(this.predecessor, this.id, this.id, null, -1, new Hashtable<Integer,String>(), new Vector<ReplicaElements>(), this.K - 1, Type.PRED_CHAIN_REQUEST, false);
         Messaging.SendMessage(predChainMsg);
         Vector<ReplicaElements> tmpChain = new Vector<ReplicaElements>();
         tmpChain.add(new ReplicaElements(this.id, this.hashtable));
-        Message succChainMsg = new Message(this.successor, this.id, this.id, null, -1, this.hashtable, tmpChain, this.K - 1, Type.SUCC_CHAIN_REQUEST);
+        Message succChainMsg = new Message(this.successor, this.id, this.id, null, -1, this.hashtable, tmpChain, this.K - 1, Type.SUCC_CHAIN_REQUEST, false);
         Messaging.SendMessage(succChainMsg);
         
         return;
     }
-    
-    public void FindMyHashtable() throws InterruptedException {
-    	
-    	Message msg = new Message(this.successor, this.id, this.id, null, -1, null, Type.REQUEST_HASH_TABLE);
-    	Messaging.SendMessage(msg);
-    	try {
-			msg = ReceiveMessage();
-		} catch (ClassNotFoundException e) {
-			e.printStackTrace();
-		}
-    	MessageHandler msgHandler = new MessageHandler(msg, this);
-    	msgHandler.start();
-    	msgHandler.join();
-    	
-    	return;
-    }
-    
 }

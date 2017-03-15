@@ -1,53 +1,64 @@
 package chord;
 
+import java.awt.Canvas;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.DatagramSocket;
+import java.net.ServerSocket;
 import java.security.NoSuchAlgorithmException;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Random;
+import java.util.Vector;
 
 public class Master {
 
-	private static Hashtable<Integer,ChordNode> chord;
-	public int PORT = 49152;
-	public String IPV4 = "127.0.0.1";
-	public static int K = 5;
-	public static String MODE = "seq_con";
+	public static Hashtable<Integer,ChordNode> chord;
+	public static int PORT = 49152;
+	public static String IPV4 = "127.0.0.1";
+	public static int K = 10;
+	public static String MODE;
+	private Canvas canvas;
 	
-	public Master() throws NoSuchAlgorithmException {
+	public Master(Canvas canvas) throws NoSuchAlgorithmException {
 		
+		MODE = "lin";
 		chord = new Hashtable<Integer,ChordNode>();
-		ChordNode chordNode = new ChordNode(0, 0, K);
+		ChordNode chordNode = new ChordNode(0, 0, K, MODE);
 		chord.put(0, chordNode);
 		chordNode.start();
+		this.canvas = canvas;
 	}
 	
-	public int InsertNode(int num) throws NoSuchAlgorithmException {
+	public int NodeJoin(int num) throws NoSuchAlgorithmException {
 		
 		int id = Hash_SHA.SHA1(Integer.toString(num));
 		if(chord.containsKey(id)){
 			if(chord.get(id) != null)
 				return -1;
 		}
-		ChordNode chordNode = new ChordNode(id, num, K);
+		if (!available(PORT + id))
+			return -1;
+		ChordNode chordNode = new ChordNode(id, num, K, MODE);
 		chord.put(id, chordNode);
 		chordNode.start();
+		canvas.repaint();
 		return 1;
 	}
 	
-	public int RemoveNode(int num) throws NoSuchAlgorithmException, InterruptedException, IOException {
-		if (chord.size() < 2)
-			return -1;
+	public int NodeDepart(int num) throws NoSuchAlgorithmException, InterruptedException, IOException {
+		
 		int id = Hash_SHA.SHA1(Integer.toString(num));
+		if (chord.size() < 2 || !chord.containsKey(id))
+			return -1;
 		ChordNode chordNode = chord.get(id);
 		System.out.println("master\t: Removing node " + id);
 		chordNode.alive = false;
 		chordNode.Server.close();
 		chord.remove(id);
+		canvas.repaint();
 		return 1;
 	}
 	
@@ -68,7 +79,7 @@ public class Master {
 		return;
 	}
 	
-	public void InsertKeyValue(String key, String value) throws NoSuchAlgorithmException {
+	public void InsertKeyValue(String key, String value, boolean timer) throws NoSuchAlgorithmException {
 		
 		Random rnd = new Random();
 		rnd.setSeed(System.currentTimeMillis());
@@ -79,66 +90,64 @@ public class Master {
 		for (Iterator<Integer> iter = chord.keySet().iterator(); iter.hasNext(); ) {
 			random_node = iter.next();
 			if(random_key == counter) {
-				Message message = new Message(random_node, -1, -1, value, hash_key, null, Type.INSERT);
-				Messaging.SendMessage(message);
-				break;
-			}
-			counter++;
-    	}	
-	}
-	
-	public void DeleteKey(String key) throws NoSuchAlgorithmException {
-		
-		Random rnd = new Random();
-		rnd.setSeed(System.currentTimeMillis());
-		int random_key = Math.abs(rnd.nextInt() % chord.size());
-		int hash_key = Hash_SHA.SHA1(key);
-		int random_node;
-		int counter = 0;
-		for (Iterator<Integer> iter = chord.keySet().iterator(); iter.hasNext(); ) {
-			random_node = iter.next();
-			if(random_key == counter) {
-				Message message = new Message(random_node, -1, -1, null, hash_key, null, Type.DELETE);
+				Message message = new Message(random_node, -1, random_node, value, hash_key, null, Type.INSERT, timer);
 				Messaging.SendMessage(message);
 				break;
 			}
 			counter++;
     	}
+		return;
 	}
 	
-	public void Query(String key) throws NoSuchAlgorithmException {
+	public void DeleteKey(String key, boolean timer) throws NoSuchAlgorithmException {
+		
+		Random rnd = new Random();
+		rnd.setSeed(System.currentTimeMillis());
+		int random_key = Math.abs(rnd.nextInt() % chord.size());
+		int hash_key = Hash_SHA.SHA1(key);
+		int random_node;
+		int counter = 0;
+		for (Iterator<Integer> iter = chord.keySet().iterator(); iter.hasNext(); ) {
+			random_node = iter.next();
+			if(random_key == counter) {
+				Message message = new Message(random_node, -1, random_node, null, hash_key, null, Type.DELETE, timer);
+				Messaging.SendMessage(message);
+				break;
+			}
+			counter++;
+    	}
+		return;
+	}
+	
+	public void Query(String key, boolean timer) throws NoSuchAlgorithmException {
 
 		Message message;
-		if (key.equals("*")) {
-			if (MODE.equals("seq_con"))
-				message = new Message(0, -1, 0, null, -1, null, Type.QUERYALL_SC);
-			else
-				message = new Message(0, -1, 0, null, -1, null, Type.QUERYALL);
-			Messaging.SendMessage(message);
-			return;
-		}
-		
-		Random rnd = new Random();
-		rnd.setSeed(System.currentTimeMillis());
-		int random_key = Math.abs(rnd.nextInt() % chord.size());
+		Random r = new Random();
+		int random_key = r.nextInt(chord.size());
 		int hash_key = Hash_SHA.SHA1(key);
 		int random_node;
 		int counter = 0;
 		for (Iterator<Integer> iter = chord.keySet().iterator(); iter.hasNext(); ) {
 			random_node = iter.next();
 			if(random_key == counter) {
-				if (MODE.equals("seq_con"))
-					message = new Message(random_node, -1, random_node, null, hash_key, null, Type.QUERY_SC);
-				else 
-					message = new Message(random_node, -1, random_node, null, hash_key, null, Type.QUERY);
+				if (MODE.equals("ev_con") && key.equals("*"))
+					message = new Message(random_node, -1, random_node, null, -1, new Hashtable<Integer,String>(), Type.QUERYALL_EC, timer);
+				else if (!MODE.equals("ev_con") && key.equals("*"))
+					message = new Message(random_node, -1, random_node, null, -1, new Hashtable<Integer,String>(), Type.QUERYALL, timer);
+				else if (MODE.equals("ev_con"))
+					message = new Message(random_node, -1, random_node, null, hash_key, null, Type.QUERY_EC, timer);
+				else
+					message = new Message(random_node, -1, random_node, null, hash_key, null, Type.QUERY, timer);
 				Messaging.SendMessage(message);
 				break;
 			}
 			counter++;
     	}
+		return;
 	}
 	
 	public void TKanel() {
+		
 		int i, j;
 		for (Iterator<Integer> iter = chord.keySet().iterator(); iter.hasNext(); ) {
 			i = iter.next();
@@ -149,19 +158,72 @@ public class Master {
 			}
 			System.out.println("** " + i + " **\n");
 		}
+		return;
 	}
 	
-	public void Fileread() throws FileNotFoundException, IOException, NoSuchAlgorithmException {
-		File file = new File("/home/dimosthenis/Downloads/insert.txt");
-		try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-		    String line;
-		    String[] elems;
-		    while ((line = br.readLine()) != null) {
-		       elems = line.split(", ");
-		       InsertKeyValue(elems[0], elems[1]);
-		    }
+	public void Fileread(String path) throws FileNotFoundException, IOException, NoSuchAlgorithmException {
+		
+		Vector<String> filelines = new Vector<String>();
+		String line;
+		BufferedReader reader = new BufferedReader(new FileReader(path));
+
+		while ((line = reader.readLine()) != null) {
+			filelines.add(line);
+		}
+		reader.close();
+
+		String[] elems;
+		System.out.println(filelines.size() + "-line file");
+		Timer timer = new Timer(filelines.size());
+		timer.start();
+		
+		for (int counter = 0; counter < filelines.size(); counter++) {
+			line = filelines.elementAt(counter);
+		    elems = line.split(", ");
+		    if (elems.length == 1)
+		    	Query(elems[0], true);
+		    else if (elems[0].equals("query"))
+			    Query(elems[1], true);
+		    else if (elems[0].equals("insert"))
+			    InsertKeyValue(elems[1], elems[2], true);
+		    else if (elems[0].equals("delete"))
+		 	    DeleteKey(elems[1], true);
+		    else 
+			    InsertKeyValue(elems[0], elems[1], true);
 		}
 		
+		return;
+	}
+	
+	public static boolean available(int port) {
+	    if (port < PORT || port > PORT + 1024) {
+	        throw new IllegalArgumentException("Invalid start port: " + port);
+	    }
+
+	    ServerSocket ss = null;
+	    DatagramSocket ds = null;
+	    try {
+	        ss = new ServerSocket(port);
+	        ss.setReuseAddress(true);
+	        ds = new DatagramSocket(port);
+	        ds.setReuseAddress(true);
+	        return true;
+	    } catch (IOException e) {
+	    } finally {
+	        if (ds != null) {
+	            ds.close();
+	        }
+
+	        if (ss != null) {
+	            try {
+	                ss.close();
+	            } catch (IOException e) {
+	                /* should not be thrown */
+	            }
+	        }
+	    }
+
+	    return false;
 	}
 
 }
