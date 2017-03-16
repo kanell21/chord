@@ -36,6 +36,7 @@ public class UserGui {
 	private JButton btnDelete;
 	private JButton btnQuery;
 	private JButton btnFile;
+	private JButton btnTkanel;
 	private JTextField textFieldJoin;
 	private JTextField textFieldDepart;
 	private JTextField textFieldInsertKey;
@@ -43,6 +44,8 @@ public class UserGui {
 	private JTextField textFieldDelete;
 	private JTextField textFieldQuery;
 	private JTextField textFieldFile;
+	private JRadioButton rdbtnLinearizability;
+	private JRadioButton rdbtnEventualConsistency;
 	private JLabel lblActiveNodes;
 	private Canvas canvas;
 	private int R = 125;
@@ -178,7 +181,7 @@ public class UserGui {
 				String key = textFieldQuery.getText();
 				if (key != null)
 					try {
-						master.Query(key, false);
+						master.Query(key, false/*, 1*/);
 					} catch (NoSuchAlgorithmException e) {
 						e.printStackTrace();
 					}				
@@ -198,6 +201,16 @@ public class UserGui {
 				} catch (NoSuchAlgorithmException | IOException e) {
 					e.printStackTrace();
 				}				
+			}
+		});
+		
+		btnTkanel = new JButton("tkanel");
+		btnTkanel.setBackground(new Color(230, 230, 250));
+		btnTkanel.setBounds(32, 272, 103, 25);
+		frame.getContentPane().add(btnTkanel);
+		btnTkanel.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				master.TKanel();
 			}
 		});
 		
@@ -241,7 +254,7 @@ public class UserGui {
 		lblActiveNodes.setBounds(570, 323, 170, 19);
 		frame.getContentPane().add(lblActiveNodes);
 		
-		JRadioButton rdbtnLinearizability = new JRadioButton("Linearizability");
+		rdbtnLinearizability = new JRadioButton("Linearizability");
 		rdbtnLinearizability.setBackground(new Color(211, 211, 211));
 		buttonGroup.add(rdbtnLinearizability);
 		rdbtnLinearizability.setBounds(280, 45, 179, 23);
@@ -260,7 +273,7 @@ public class UserGui {
 			}
 		});
 		
-		JRadioButton rdbtnEventualConsistency = new JRadioButton("Eventual Consistency");
+		rdbtnEventualConsistency = new JRadioButton("Eventual Consistency");
 		rdbtnEventualConsistency.setBackground(new Color(211, 211, 211));
 		buttonGroup.add(rdbtnEventualConsistency);
 		rdbtnEventualConsistency.setBounds(280, 82, 179, 23);
@@ -330,7 +343,7 @@ public class UserGui {
 		frame.getContentPane().add(canvas);
 		
 		master = new Master(this.canvas);
-		
+
 	}
 	
 	private void updateTextArea(final String text) {

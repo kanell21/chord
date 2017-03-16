@@ -42,7 +42,7 @@ public class ChordNode extends Thread {
             	message = ReceiveMessage();
             	
             	if (!this.alive) {
-            		message = new Message(this.successor, this.id, this.id, null, -1, this.hashtable, this.predChain, this.K, Type.DEPART_PRED_CHAIN, false);
+            		message = new Message(this.successor, this.id, this.id, Integer.toString(this.predecessor), -1, this.hashtable, this.predChain, this.K, Type.DEPART_PRED_CHAIN, false);
                 	Messaging.SendMessage(message);
                 	Server = new ServerSocket(PORT + this.id);
                 	message = ReceiveMessage();
@@ -145,7 +145,7 @@ public class ChordNode extends Thread {
         Messaging.SendMessage(predChainMsg);
         Vector<ReplicaElements> tmpChain = new Vector<ReplicaElements>();
         tmpChain.add(new ReplicaElements(this.id, this.hashtable));
-        Message succChainMsg = new Message(this.successor, this.id, this.id, null, -1, this.hashtable, tmpChain, this.K - 1, Type.SUCC_CHAIN_REQUEST, false);
+        Message succChainMsg = new Message(this.successor, this.id, this.id, null, -1, new Hashtable<Integer,String>(), tmpChain, this.K, Type.SUCC_CHAIN_REQUEST, false);
         Messaging.SendMessage(succChainMsg);
         
         return;

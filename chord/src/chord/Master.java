@@ -18,7 +18,7 @@ public class Master {
 	public static Hashtable<Integer,ChordNode> chord;
 	public static int PORT = 49152;
 	public static String IPV4 = "127.0.0.1";
-	public static int K = 10;
+	public static int K = 3;
 	public static String MODE;
 	private Canvas canvas;
 	
@@ -119,7 +119,7 @@ public class Master {
 		return;
 	}
 	
-	public void Query(String key, boolean timer) throws NoSuchAlgorithmException {
+	public void Query(String key, boolean timer/*, int qid*/) throws NoSuchAlgorithmException {
 
 		Message message;
 		Random r = new Random();
@@ -131,13 +131,13 @@ public class Master {
 			random_node = iter.next();
 			if(random_key == counter) {
 				if (MODE.equals("ev_con") && key.equals("*"))
-					message = new Message(random_node, -1, random_node, null, -1, new Hashtable<Integer,String>(), Type.QUERYALL_EC, timer);
+					message = new Message(random_node, -1, random_node, null/*Integer.toString(qid)*/, -1, new Hashtable<Integer,String>(), Type.QUERYALL_EC, timer);
 				else if (!MODE.equals("ev_con") && key.equals("*"))
-					message = new Message(random_node, -1, random_node, null, -1, new Hashtable<Integer,String>(), Type.QUERYALL, timer);
+					message = new Message(random_node, -1, random_node, null/*Integer.toString(qid)*/, -1, new Hashtable<Integer,String>(), Type.QUERYALL, timer);
 				else if (MODE.equals("ev_con"))
-					message = new Message(random_node, -1, random_node, null, hash_key, null, Type.QUERY_EC, timer);
+					message = new Message(random_node, -1, random_node, null/*Integer.toString(qid)*/, hash_key, null, Type.QUERY_EC, timer);
 				else
-					message = new Message(random_node, -1, random_node, null, hash_key, null, Type.QUERY, timer);
+					message = new Message(random_node, -1, random_node, null/*Integer.toString(qid)*/, hash_key, null, Type.QUERY, timer);
 				Messaging.SendMessage(message);
 				break;
 			}
@@ -149,12 +149,12 @@ public class Master {
 	public void TKanel() {
 		
 		int i, j;
+		System.out.println("Replica chains:");
 		for (Iterator<Integer> iter = chord.keySet().iterator(); iter.hasNext(); ) {
 			i = iter.next();
-			System.out.println();
 			for (int k = chord.get(i).predChain.size() - 1; k >= 0; k--) {
 				j = chord.get(i).predChain.elementAt(k).id;
-				System.out.print(j + "\t-->\t");
+				System.out.print(j + "  ->  ");
 			}
 			System.out.println("** " + i + " **\n");
 		}
@@ -178,20 +178,24 @@ public class Master {
 		timer.start();
 		
 		reader = new BufferedReader(new FileReader(path));
-		//for (int counter = 0; counter < filelines.size(); counter++) {
+		//int i = 1;
 		while((line = reader.readLine()) != null) {
-		//	line = filelines.elementAt(counter);
 		    elems = line.split(", ");
 		    if (elems.length == 1)
-		    	Query(elems[0], true);
+		    	Query(elems[0], true/*, i++*/);
 		    else if (elems[0].equals("query"))
-			    Query(elems[1], true);
+			    Query(elems[1], true/*, i++*/);
 		    else if (elems[0].equals("insert"))
 			    InsertKeyValue(elems[1], elems[2], true);
 		    else if (elems[0].equals("delete"))
 		 	    DeleteKey(elems[1], true);
 		    else 
 			    InsertKeyValue(elems[0], elems[1], true);
+			try {
+				Thread.sleep(4);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 		
 		return;
@@ -215,7 +219,6 @@ public class Master {
 	        if (ds != null) {
 	            ds.close();
 	        }
-
 	        if (ss != null) {
 	            try {
 	                ss.close();
@@ -224,7 +227,6 @@ public class Master {
 	            }
 	        }
 	    }
-
 	    return false;
 	}
 
