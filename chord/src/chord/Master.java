@@ -177,8 +177,10 @@ public class Master {
 		Timer timer = new Timer(filelines.size());
 		timer.start();
 		
-		for (int counter = 0; counter < filelines.size(); counter++) {
-			line = filelines.elementAt(counter);
+		reader = new BufferedReader(new FileReader(path));
+		//for (int counter = 0; counter < filelines.size(); counter++) {
+		while((line = reader.readLine()) != null) {
+		//	line = filelines.elementAt(counter);
 		    elems = line.split(", ");
 		    if (elems.length == 1)
 		    	Query(elems[0], true);

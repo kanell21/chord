@@ -292,7 +292,7 @@ public class UserGui {
 		
 		rdbtnLinearizability.setSelected(true);
 		textFieldQuery.setText("*");
-		textFieldFile.setText("/home/dimosthenis/insert.txt");
+		textFieldFile.setText("/home/dimosthenis/requests.txt");
 		canvas = new Canvas() {
 
 			private static final long serialVersionUID = 1L;
@@ -330,6 +330,7 @@ public class UserGui {
 		frame.getContentPane().add(canvas);
 		
 		master = new Master(this.canvas);
+		
 	}
 	
 	private void updateTextArea(final String text) {

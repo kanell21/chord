@@ -77,8 +77,12 @@ public class MessageHandler extends Thread {
 //                	System.out.println(node.id + "\t: Received Message of type SUCC_CHAIN_REQUEST with TTL " + msgTTL);
                 	if (msgTTL == node.K - 1) {
                 		node.predecessor = msg.getReplyTo();
+                		msg.getChain().add(new ReplicaElements(node.id, node.hashtable));
+                		Messaging.SendMessage(new Message(node.successor, node.id, node.id, null, -1, node.hashtable, null, node.K - 1, Type.UPDATE_MY_REPLICA, false));
                 	}
+                	
                 	node.predChain.add(node.K - 1 - msgTTL, msg.getChain().elementAt(0));
+                	
                 	while (node.predChain.size() > node.K - 1) {
                 		node.predChain.remove(node.K - 1);
                 	}
@@ -136,6 +140,21 @@ public class MessageHandler extends Thread {
                 	msg.setTTL(msgTTL - 1);
                 	Messaging.SendMessage(msg);
                 	break;
+                
+                case UPDATE_MY_REPLICA:
+//                	System.out.println(node.id + "\t: Received Message of type UPDATE_MY_REPLICA");
+                	msgTTL = msg.getTTL();
+                	node.predChain.elementAt(node.K - 1 - msgTTL).hashtable.clear();
+                	node.predChain.elementAt(node.K - 1 - msgTTL).hashtable.putAll(msg.getHashtable());
+                	if (node.successor == msg.getReplyTo())
+                		break;
+                	if (msgTTL > 1) {
+                		msg.setFrom(node.id);
+                		msg.setTo(node.successor);
+                		msg.setTTL(msgTTL - 1);
+                		Messaging.SendMessage(msg);
+                	}
+                	break;
                 	
                 case GRACEFUL_DEPARTURE:
                 	System.out.println(node.id + "\t: Received Message of type GRACEFUL_DEPARTURE");
@@ -153,15 +172,20 @@ public class MessageHandler extends Thread {
                 	Hashtable<Integer,String> tmp_hashtable = new Hashtable<Integer,String>();
                 	tmp_hashtable.putAll(node.hashtable);
                 	Iterator<Integer> itr = tmp_hashtable.keySet().iterator();
+                	System.out.println(node.id + " sending hashtable to " + msg.getReplyTo());
+                	
 	                for ( ; itr.hasNext(); ) {
 	                    int key = (int) itr.next();
 	                    if (key <= msg.getReplyTo()) {
+	                    	System.out.println("inserting key " + key);
 	                    	distribute_hash.put(key,(String) tmp_hashtable.get(key)); 
 	                    	itr.remove();
 	                    }
-                	}
-	                node.hashtable.putAll(tmp_hashtable);
-
+	        		}
+	                synchronized(node.hashtable) {
+	                	node.hashtable.clear();
+	                	node.hashtable.putAll(tmp_hashtable);
+	                }
                 	message = new Message(msg.getReplyTo(), node.id, -1, null, -1, distribute_hash, Type.RECEIVE_HASH_TABLE, msg.getTimer());
                 	Messaging.SendMessage(message);
                     break;
@@ -174,6 +198,7 @@ public class MessageHandler extends Thread {
 	                		node.queue.add(this.getId());
                 		}
 	                	while (node.queue.firstElement() != this.getId());
+	                	
                 		node.hashtable.put(msg.getHashKey(), msg.getBody());
 //                		System.out.println(node.id + "\t: Inserted hashkey-value: " + hashKey + "-" + msg.getBody());
                 		
@@ -266,7 +291,7 @@ public class MessageHandler extends Thread {
                 		repElems = iter.next();
                 		if (repElems.id == msgId) {
                 			repElems.hashtable.remove(msg.getHashKey());
-                        	System.out.println(node.id + "\t: Deleted hashkey: " + msg.getHashKey());
+//                        	System.out.println(node.id + "\t: Deleted hashkey: " + msg.getHashKey());
                 			break;
                 		}
                 	}
@@ -311,7 +336,8 @@ public class MessageHandler extends Thread {
                 		for (Iterator<ReplicaElements> iter = node.predChain.iterator(); iter.hasNext(); ) {
                 			repElems = iter.next();
                 			if ((repElems.id > hashKey || repElems.id == 0) & repElems.hashtable.containsKey(hashKey)) {
-//               				System.out.println(node.id + "\t: Returning hashkey-value: " + hashKey + "-" + repElems.hashtable.get(hashKey) + " from my replicas");
+               				System.out.println(node.id + "\t: Returning hashkey-value: " + hashKey + "-" + repElems.hashtable.get(hashKey)
+               						+ " from my replica elem " + repElems.id);
                         		message = new Message(msg.getReplyTo(), node.id, -1, repElems.hashtable.get(hashKey), hashKey, null, Type.RESPONSE, msg.getTimer());
                         		Messaging.SendMessage(message);
                         		foundQuery = true;
